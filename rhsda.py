@@ -67,7 +67,7 @@ cveFields.not_most = [
     'statement',
     'mitigation',
     'references',
-    ]
+]
 # All fields except the above
 cveFields.most = list(cveFields.all)
 for f in cveFields.not_most:
@@ -80,7 +80,7 @@ cveFields.base = [
     'bugzilla',
     'affected_release',
     'package_state',
-    ]
+]
 # Aliases to make life easier
 cveFields.aliases = {
     'severity': 'threat_severity',
@@ -90,14 +90,14 @@ cveFields.aliases = {
     'releases': 'affected_release',
     'fix_states': 'package_state',
     'states': 'package_state',
-    }
+}
 # Printable mapping of aliases
 cveFields.aliases_printable = [
     "threat_severity → severity",
     "public_date → date",
     "affected_release → fixed_releases or fixed or releases",
     "package_state → fix_states or states",
-    ]
+]
 # A list of all fields + all aliases
 cveFields.all_plus_aliases = list(cveFields.all)
 cveFields.all_plus_aliases.extend([k for k in cveFields.aliases])
@@ -113,20 +113,12 @@ cve_regex = re.compile(cve_regex_string, re.IGNORECASE)
 # This is critical to allow multiprocessing.Pool.map_async() to work as desired
 # See: http://stackoverflow.com/a/19861595
 def _reduce_method(m):
-    if m.__self__ is None:
-        return getattr, (m.__class__, m.__func__.__name__)
-    else:
-        return getattr, (m.__self__, m.__func__.__name__)
+    return getattr, (m.__class__, m.__func__.__name__) if m.__self__ is None else getattr, (m.__self__, m.__func__.__name__)
 
 copy_reg.pickle(types.MethodType, _reduce_method)
 
 
-# Set default number of worker threads
-if multiprocessing.cpu_count() <= 2:
-    numThreadsDefault = 4
-else:
-    numThreadsDefault = multiprocessing.cpu_count() * 2
-
+numThreadsDefault = 4 if multiprocessing.cpu_count() <= 2 else multiprocessing.cpu_count() * 2
 
 def jprint(jsoninput):
     """Pretty-print jsoninput."""
@@ -156,10 +148,7 @@ def extract_cves_from_input(obj, descriptiveNoun=None):
         # Converting to a set removes duplicates
         found = list(set([x.upper() for x in found]))
         dupesRemoved = originalCount - len(found)
-        if dupesRemoved:
-            dupes = "; {0} duplicates removed".format(dupesRemoved)
-        else:
-            dupes = ""
+        dupes = "; {0} duplicates removed".format(dupesRemoved) if dupesRemoved else ""
         logger.log(25, "Found {0} CVEs on {1}{2}".format(len(found), descriptiveNoun, dupes))
         return found
     else:
@@ -214,10 +203,8 @@ class ApiClient:
             baseurl = r.url.split("/")[-2]
         logger.debug("Return '.../{0}': Status {1}, Content-Type {2}".format(baseurl, r.status_code, r.headers['Content-Type'].split(";")[0]))
         r.raise_for_status()
-        if 'application/json' in r.headers['Content-Type']:
-            return r.json()
-        else:
-            return r.content
+
+        return r.json() if 'application/json' in r.headers['Content-Type'] else r.content
 
     def _find(self, dataType, params, outFormat):
         self.__validate_data_type(dataType)
@@ -262,7 +249,7 @@ class ApiClient:
                 'package': package,
                 'page': page,
                 'per_page': per_page,
-                }
+            }
         return self._find('cvrf', params, outFormat)
 
     def find_cves(self, params=None, outFormat='json',
@@ -293,7 +280,7 @@ class ApiClient:
                 'cvss3_score': cvss3_score,
                 'page': page,
                 'per_page': per_page,
-                }
+            }
         return self._find('cve', params, outFormat)
 
     def find_ovals(self, params=None, outFormat='json',
@@ -318,7 +305,7 @@ class ApiClient:
                 'severity': severity,
                 'page': page,
                 'per_page': per_page,
-                }
+            }
         return self._find('oval', params, outFormat)
 
     def find_iavas(self, params=None, outFormat='json',
@@ -340,7 +327,7 @@ class ApiClient:
                 'severity': severity,
                 'page': page,
                 'per_page': per_page,
-                }
+            }
         return self._find('iava', params, outFormat)
 
     def get_cvrf(self, rhsa, outFormat='json'):
@@ -367,10 +354,7 @@ class ApiClient:
         """Strip whitespace from input or input list."""
         text = ""
         if isinstance(input, list):
-            if oneLineEach:
-                text = "\n".join(input).encode('utf-8').strip()
-            else:
-                text = "  ".join(input).encode('utf-8').strip()
+            text = "\n".join(input).encode('utf-8').strip() if oneLineEach else "  ".join(input).encode('utf-8').strip()
         else:
             text = input.encode('utf-8').strip()
         if oneLineEach:
@@ -461,10 +445,7 @@ class ApiClient:
         # BUGZILLA
         if 'bugzilla' in self.cfg.desiredFields:
             if 'bugzilla' in J:
-                if self.cfg.urls:
-                    bug = J['bugzilla']['url']
-                else:
-                    bug = J['bugzilla']['id']
+                bug = J['bugzilla']['url'] if self.cfg.urls else J['bugzilla']['id']
                 out.append("  BUGZILLA : {0}".format(bug))
             else:
                 out.append("  BUGZILLA : No Bugzilla data")
@@ -650,10 +631,7 @@ class ApiClient:
 
     def _set_cve_plaintext_product(self, product):
         self.cfg.product = product
-        if product:
-            self.regex_product = re.compile(product, re.IGNORECASE)
-        else:
-            self.regex_product = None
+        self.regex_product = re.compile(product, re.IGNORECASE) if product else None
 
     def _set_cve_plaintext_width(self, wrapWidth):
         if wrapWidth == 1:
@@ -662,10 +640,8 @@ class ApiClient:
             else:
                 logger.warning("Stdin redirection suppresses term-width auto-detection; setting WIDTH to 70")
                 wrapWidth = 70
-        if wrapWidth:
-            self.wrapper = textwrap.TextWrapper(width=wrapWidth, initial_indent="   ", subsequent_indent="   ", replace_whitespace=False)
-        else:
-            self.wrapper = 0
+        
+        self.wrapper = textwrap.TextWrapper(width=wrapWidth, initial_indent="   ", subsequent_indent="   ", replace_whitespace=False) if wrapWidth else 0
         logger.debug("Set wrapWidth to '{0}'".format(wrapWidth))
 
     def mget_cves(self, cves, numThreads=0, onlyCount=False, outFormat='plaintext',
@@ -733,10 +709,7 @@ class ApiClient:
         elif not isinstance(cves, list):
             raise ValueError("Invalid 'cves=' argument input; must be list, string, or file obj")
         if not len(cves):
-            if outFormat in ['plaintext', 'jsonpretty']:
-                return ""
-            else:
-                return []
+            return "" if outFormat in ['plaintext', 'jsonpretty'] else []
         # Configure threads
         if not numThreads:
             numThreads = numThreadsDefault

@@ -336,10 +336,8 @@ def parse_args():
     # If autowrap and using pastebin, set good width
     if o.wrapWidth == 1 and o.pastebin:
         o.wrapWidth = 168
-    if o.json:
-        o.outFormat = 'jsonpretty'
-    else:
-        o.outFormat = 'plaintext'
+
+    o.outFormat = 'jsonpretty' if o.json else 'plaintext'
     logger.setLevel(o.loglevel.upper())
     return o
 
